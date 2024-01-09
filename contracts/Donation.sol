@@ -14,22 +14,22 @@ contract Donation {
         uint256[] donations;
     }
 
-    mapping(uint256 => Support) public allSupports;
+    mapping(uint256 => Support) public allsupports;
 
     uint256 public numberOfSupports = 0;
 
     function createSupport(address _owner, string memory _title, string memory _description, uint256 _target, uint256 _deadline, string memory _image) public returns (uint256) {
-        Support storage support = allSupports[numberOfSupports];
+        Support storage allsupport = allsupports[numberOfSupports];
 
-        require(_deadline > block.timestamp, "The deadline should be a date in the future.");
+        require(allsupport.deadline < block.timestamp, "The deadline should be a date in the future.");
 
-        support.owner = _owner;
-        support.title = _title;
-        support.description = _description;
-        support.target = _target;
-        support.deadline = _deadline;
-        support.amountCollected = 0;
-        support.image = _image;
+        allsupport.owner = _owner;
+        allsupport.title = _title;
+        allsupport.description = _description;
+        allsupport.target = _target;
+        allsupport.deadline = _deadline;
+        allsupport.amountCollected = 0;
+        allsupport.image = _image;
 
         numberOfSupports++;
 
@@ -39,33 +39,31 @@ contract Donation {
     function donateToSupport(uint256 _id) public payable {
         uint256 amount = msg.value;
 
-        Support storage support = allSupports[_id];
+        Support storage allsupport = allsupports[_id];
 
-        require(support.deadline > block.timestamp, "Campaign deadline has passed.");
+        allsupport.donators.push(msg.sender);
+        allsupport.donations.push(amount);
 
-        // Reentrancy guard
-        require(support.amountCollected + amount >= support.amountCollected, "Overflow error");
+        (bool sent,) = payable(allsupport.owner).call{value: amount}("");
 
-        support.donators.push(msg.sender);
-        support.donations.push(amount);
-
-        support.amountCollected += amount;
-
-        // Use transfer to send Ether and avoid reentrancy issues
-        require(payable(support.owner).send(amount), "Transfer failed");
+        if(sent) {
+            allsupport.amountCollected = allsupport.amountCollected + amount;
+        }
     }
 
     function getDonators(uint256 _id) view public returns (address[] memory, uint256[] memory) {
-        return (allSupports[_id].donators, allSupports[_id].donations);
+        return (allsupports[_id].donators, allsupports[_id].donations);
     }
 
     function getSupports() public view returns (Support[] memory) {
-        Support[] memory supportList = new Support[](numberOfSupports);
+        Support[] memory allSupports = new Support[](numberOfSupports);
 
         for(uint i = 0; i < numberOfSupports; i++) {
-            supportList[i] = allSupports[i];
+            Support storage item = allsupports[i];
+
+            allSupports[i] = item;
         }
 
-        return supportList;
+        return allSupports;
     }
 }
